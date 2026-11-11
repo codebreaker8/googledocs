@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+<link rel="icon" href="imagess.jpg" type="image/jpg" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="imagess.jpg" type="image/jpg" />
 <title>CODE BREAKER'S GOOGLE DOCUMENTS</title>
 <style>
 :root[data-theme="dark"] {
@@ -639,10 +639,8 @@ let shiftHeld = false;
 let annotationClipboard = [];
 let pageImageClipboard = null;
 let _zoomLockToastT = 0;
-
 let selectedPages = new Set();
 let selectedPagesAnchor = -1;
-
 let pageDeleteHistory = [];
 
 let toolState = {
@@ -859,8 +857,10 @@ document.getElementById('laserMode').onchange = e => {
 document.getElementById('eraserMode').onchange = e => { toolState.eraserMode = e.target.value; saveApp(); };
 
 function undoActive() {
-  if (mode === 'view') return;
-  const inst = activePageId && pageInstances[activePageId]; if (inst) inst.undo();
+  if (mode === 'view') return false;
+  const inst = activePageId && pageInstances[activePageId];
+  if (inst && inst.undoStack.length > 1) { inst.undo(); return true; }
+  return false;
 }
 function redoActive() {
   if (mode === 'view') return;
@@ -878,11 +878,9 @@ function copySelection() {
   if (!inst || inst.selection.length === 0) return false;
   const pageSelected = inst.selection.includes(inst.pageElement);
   const otherEls = inst.selection.filter(el => el !== inst.pageElement);
-
   pageImageClipboard = null;
   annotationClipboard = [];
   let didCopy = false;
-
   if (pageSelected && inst.pg.baseDataUrl && !inst.pg.blankImage) {
     pageImageClipboard = {
       dataUrl: inst.pg.baseDataUrl,
@@ -1320,6 +1318,13 @@ class PageInstance {
     this.layout = block._layout;
     this.DPR = this.layout.DPR;
     this.elements = Array.isArray(pg.elements) ? pg.elements : [];
+    this.elements.forEach(el => {
+      if (el.type === 'image' && el.src && !el._img) {
+        const im = new Image();
+        im.src = el.src;
+        el._img = im;
+      }
+    });
 
     const { PAD, PW, PH } = this.layout;
     this.pageElement = pg.pageElement ? {...pg.pageElement} : {
@@ -1445,7 +1450,6 @@ class PageInstance {
     const pe = this.pageElement;
     const w = pe.x2 - pe.x1, h = pe.y2 - pe.y1;
     if (w <= 0 || h <= 0) return;
-
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.42)';
     ctx.shadowBlur = 22;
@@ -1453,11 +1457,9 @@ class PageInstance {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(pe.x1, pe.y1, w, h);
     ctx.restore();
-
     if (!this.pg.blankImage && this.pageImg && this.pageImg.complete) {
       ctx.drawImage(this.pageImg, pe.x1, pe.y1, w, h);
     }
-
     ctx.save();
     ctx.strokeStyle = 'rgba(128,128,128,0.28)';
     ctx.lineWidth = 1;
@@ -1471,9 +1473,7 @@ class PageInstance {
     ctx.save();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, CW, CH);
-
     this.drawPageAndBorder(ctx);
-
     if (!this.pg.annotationsHidden) {
       for (const el of this.elements) drawElement(ctx, el);
     }
@@ -1488,7 +1488,6 @@ class PageInstance {
       ctx.stroke();
       ctx.restore();
     }
-
     if (this.selection.length === 1) {
       const el = this.selection[0];
       const b = getBounds(el);
@@ -1646,7 +1645,6 @@ class PageInstance {
     e.preventDefault();
     try { this.canvas.setPointerCapture(e.pointerId); } catch(_) {}
     if (selectedPages.size > 0) clearPageSelection();
-
     const p = this.getPt(e);
     const tool = toolState.tool;
     this._currentTool = tool;
@@ -2250,7 +2248,7 @@ function renderSidebar() {
 
     const delBtn = document.createElement('button');
     delBtn.textContent = '🗑';
-    delBtn.title = 'Delete page (Ctrl+Z to restore)';
+    delBtn.title = 'Delete page';
     delBtn.className = 'danger';
     delBtn.onclick = (e) => {
       e.stopPropagation();
@@ -2374,7 +2372,7 @@ function addBlankPage() {
 }
 
 async function deleteSinglePage(pageId) {
-  if (!confirm('Delete this page completely?\n\nTip: to only blank the page image, select the page in the canvas and press Delete.\n\nUndo with Ctrl+Z.')) return;
+  if (!confirm('Delete this page completely?\n\nTip: to only blank the page image, select the page in the canvas and press Delete.')) return;
   const doc = getCurrentDoc(); if (!doc) return;
   const idx = doc.pages.findIndex(p => p.id === pageId);
   if (idx < 0) return;
@@ -2395,7 +2393,7 @@ async function deleteSinglePage(pageId) {
 
   await saveApp();
   renderDocument();
-  showToast('Page deleted — Ctrl+Z to restore', 'success');
+  showToast('Page deleted', 'success');
 }
 
 async function deleteSelectedPages() {
@@ -2403,7 +2401,7 @@ async function deleteSelectedPages() {
   if (!doc || selectedPages.size === 0) return;
 
   const count = selectedPages.size;
-  const msg = `Delete ${count} selected page${count !== 1 ? 's' : ''}?\n\nThe page${count !== 1 ? 's' : ''} will be removed and remaining pages renumbered.\n\nUndo with Ctrl+Z.`;
+  const msg = `Delete ${count} selected page${count !== 1 ? 's' : ''}?\n\nThe page${count !== 1 ? 's' : ''} will be removed and remaining pages renumbered.`;
   if (!confirm(msg)) return;
 
   const idsToDelete = new Set(selectedPages);
@@ -2436,7 +2434,7 @@ async function deleteSelectedPages() {
 
   await saveApp();
   renderDocument();
-  showToast(`${count} page${count !== 1 ? 's' : ''} deleted — Ctrl+Z to restore`, 'success');
+  showToast(`${count} page${count !== 1 ? 's' : ''} deleted`, 'success');
 }
 
 async function restoreLastDeletedPage() {
@@ -2802,11 +2800,10 @@ document.addEventListener('keydown', async e => {
     if (k === 'z') {
       e.preventDefault();
       if (e.shiftKey) { redoActive(); return; }
+      if (undoActive()) return;
       if (pageDeleteHistory.length > 0 && pageDeleteHistory[pageDeleteHistory.length-1].docId === currentDocId) {
-        const restored = await restoreLastDeletedPage();
-        if (restored) return;
+        await restoreLastDeletedPage();
       }
-      undoActive();
       return;
     }
     if (k === 'y') { e.preventDefault(); redoActive(); return; }
@@ -2842,11 +2839,11 @@ document.addEventListener('keydown', async e => {
       const otherEls = inst.selection.filter(el => el !== inst.pageElement);
       let msg = '';
       if (pageSelected && otherEls.length > 0) {
-        msg = `Delete the page image AND ${otherEls.length} selected annotation${otherEls.length !== 1 ? 's' : ''}?\n\nThe page will remain but show a blank white page.\n\nUndo with Ctrl+Z.`;
+        msg = `Delete the page image AND ${otherEls.length} selected annotation${otherEls.length !== 1 ? 's' : ''}?\n\nThe page will remain but show a blank white page.`;
       } else if (pageSelected) {
-        msg = 'Delete the page image?\n\nThe page will remain but show a blank white page (no renumbering).\n\nUndo with Ctrl+Z.';
+        msg = 'Delete the page image?\n\nThe page will remain but show a blank white page (no renumbering).';
       } else if (otherEls.length > 0) {
-        msg = `Delete ${otherEls.length} selected element${otherEls.length !== 1 ? 's' : ''}?\n\nUndo with Ctrl+Z.`;
+        msg = `Delete ${otherEls.length} selected element${otherEls.length !== 1 ? 's' : ''}?`;
       } else return;
       if (!confirm(msg)) return;
       if (pageSelected) inst.pg.blankImage = true;
@@ -2859,7 +2856,7 @@ document.addEventListener('keydown', async e => {
       const parts = [];
       if (pageSelected) parts.push('page image');
       if (otherEls.length > 0) parts.push(`${otherEls.length} element(s)`);
-      showToast(parts.join(' + ') + ' deleted — Ctrl+Z to restore', 'success');
+      showToast(parts.join(' + ') + ' deleted', 'success');
       return;
     }
     if (selectedPages.size > 0) {
