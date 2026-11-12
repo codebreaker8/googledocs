@@ -874,14 +874,27 @@ function clearActive() {
 function toggleToolbar() { document.getElementById('toolbarBar').classList.toggle('hidden'); }
 
 function copySelection() {
-  const inst = activePageId && pageInstances[activePageId];
-  if (!inst || inst.selection.length === 0) return false;
+  const doc = getCurrentDoc();
+  if (!doc) return false;
+  let inst = activePageId && pageInstances[activePageId];
+  if (!inst && doc.pages.length > 0) {
+    activePageId = doc.pages[0].id;
+    inst = pageInstances[activePageId];
+    if (inst) updateSidebarActive();
+  }
+  if (!inst) {
+    showToast('Open a document first', 'error');
+    return false;
+  }
   const pageSelected = inst.selection.includes(inst.pageElement);
   const otherEls = inst.selection.filter(el => el !== inst.pageElement);
+  const forgivingPageCopy = !pageSelected && otherEls.length === 0 && inst.pg.baseDataUrl && !inst.pg.blankImage;
+
   pageImageClipboard = null;
   annotationClipboard = [];
   let didCopy = false;
-  if (pageSelected && inst.pg.baseDataUrl && !inst.pg.blankImage) {
+
+  if ((pageSelected || forgivingPageCopy) && inst.pg.baseDataUrl && !inst.pg.blankImage) {
     pageImageClipboard = {
       dataUrl: inst.pg.baseDataUrl,
       width: inst.pg.width,
@@ -899,28 +912,38 @@ function copySelection() {
     didCopy = true;
   }
   if (!didCopy) {
-    if (pageSelected) showToast('Page is blank — nothing to copy', 'error');
+    if (inst.pg.blankImage) showToast('Page is blank — nothing to copy', 'error');
+    else showToast('Nothing to copy', 'error');
     return false;
   }
   const parts = [];
   if (pageImageClipboard) parts.push('page image');
-  if (annotationClipboard.length > 0) parts.push(`${annotationClipboard.length} element(s)`);
+  if (annotationClipboard.length > 0) parts.push(`${annotationClipboard.length} annotation(s)`);
   showToast(parts.join(' + ') + ' copied', 'success');
   return true;
 }
-function pasteClipboard() {
-  const inst = activePageId && pageInstances[activePageId];
-  if (!inst) return false;
-  const pageSelected = inst.selection.includes(inst.pageElement);
-  const willPasteImage = pageSelected && !!pageImageClipboard;
-  const willPasteEls = annotationClipboard.length > 0;
-  if (!willPasteImage && !willPasteEls) {
-    if (pageImageClipboard && !pageSelected) {
-      showToast('Select the page image first, then paste', 'error');
-    }
-    return false;
+
+function ensureActiveInstance() {
+  const doc = getCurrentDoc();
+  if (!doc) return null;
+  let inst = activePageId && pageInstances[activePageId];
+  if (!inst && doc.pages.length > 0) {
+    activePageId = doc.pages[0].id;
+    inst = pageInstances[activePageId];
+    if (inst) updateSidebarActive();
   }
+  return inst;
+}
+
+function pasteClipboard() {
+  const inst = ensureActiveInstance();
+  if (!inst) return false;
+  const willPasteImage = !!pageImageClipboard;
+  const willPasteEls = annotationClipboard.length > 0;
+  if (!willPasteImage && !willPasteEls) return false;
+
   inst.pushUndo();
+
   if (willPasteImage) {
     inst.pg.baseDataUrl = pageImageClipboard.dataUrl;
     inst.pg.blankImage = false;
@@ -940,14 +963,17 @@ function pasteClipboard() {
   }
   inst.save();
   inst.render();
+  renderSidebar();
+
   const parts = [];
   if (willPasteImage) parts.push('page image');
-  if (willPasteEls) parts.push(`${annotationClipboard.length} element(s)`);
+  if (willPasteEls) parts.push(`${annotationClipboard.length} annotation(s)`);
   showToast(parts.join(' + ') + ' pasted', 'success');
   return true;
 }
+
 function duplicateSelection() {
-  const inst = activePageId && pageInstances[activePageId];
+  const inst = ensureActiveInstance();
   if (!inst || inst.selection.length === 0) return;
   const otherEls = inst.selection.filter(el => el !== inst.pageElement);
   if (otherEls.length === 0) {
@@ -1157,7 +1183,7 @@ function renderDocument() {
   scroll.innerHTML = ''; pageInstances = {};
   if (doc.pages.length === 0) {
     scroll.innerHTML = `<div class="noPages">
-      <div class="big">📄</div><p>Upload a PDF or image to start annotating. You can also drag &amp; drop files here.</p>
+      <div class="big">📄</div><p>Upload a PDF or image to start annotating. You can also drag &amp; drop files here, or paste an image with Ctrl+V.</p>
       <button class="btn-primary" onclick="triggerUpload()">⬆ Upload File</button>
     </div>`;
     renderSidebar(); return;
@@ -2121,7 +2147,37 @@ async function pasteImageElement(inst, dataUrl) {
   inst.setSelection([el]);
   inst.save();
   inst.render();
-  showToast('Image pasted from clipboard', 'success');
+  showToast('Image pasted', 'success');
+}
+
+async function handleSystemImagePaste(dataUrl) {
+  const doc = getCurrentDoc();
+  if (!doc) return false;
+  const inst = ensureActiveInstance();
+  if (inst) {
+    await pasteImageElement(inst, dataUrl);
+    return true;
+  }
+  if (doc.pages.length === 0) {
+    const im = new Image();
+    await new Promise(r => { im.onload = r; im.onerror = r; im.src = dataUrl; });
+    const newPage = {
+      id: uid(),
+      baseDataUrl: dataUrl,
+      width: im.naturalWidth || 800,
+      height: im.naturalHeight || 1131,
+      elements: [],
+      pageElement: null,
+      blankImage: false
+    };
+    doc.pages.push(newPage);
+    activePageId = newPage.id;
+    await saveApp();
+    renderDocument();
+    showToast('Image added as new page', 'success');
+    return true;
+  }
+  return false;
 }
 
 function toggleSidebar() {
@@ -2744,27 +2800,46 @@ document.addEventListener('paste', async (e) => {
   const ae = document.activeElement;
   if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT')) return;
   if (mode === 'view') return;
-  let inst = activePageId && pageInstances[activePageId];
-  if (!inst) {
-    const doc = getCurrentDoc();
-    if (doc && doc.pages.length > 0) {
-      activePageId = doc.pages[0].id;
-      inst = pageInstances[activePageId];
-      if (inst) updateSidebarActive();
+
+  const doc = getCurrentDoc();
+  if (!doc) return;
+
+  const hasInternalImg = !!pageImageClipboard;
+  const hasInternalEls = annotationClipboard.length > 0;
+
+  if (hasInternalImg || hasInternalEls) {
+    e.preventDefault();
+    pasteClipboard();
+    return;
+  }
+
+  let file = null;
+  const cb = e.clipboardData;
+  if (cb) {
+    if (cb.files && cb.files.length > 0) {
+      for (const f of cb.files) {
+        if (f.type.startsWith('image/')) { file = f; break; }
+      }
+    }
+    if (!file && cb.items) {
+      for (let i = 0; i < cb.items.length; i++) {
+        const item = cb.items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          file = item.getAsFile();
+          break;
+        }
+      }
     }
   }
-  if (!inst) return;
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      e.preventDefault();
-      const file = item.getAsFile();
-      if (file) {
-        const dataUrl = await blobToDataURL(file);
-        await pasteImageElement(inst, dataUrl);
-      }
-      return;
+
+  if (file) {
+    e.preventDefault();
+    try {
+      const dataUrl = await blobToDataURL(file);
+      await handleSystemImagePaste(dataUrl);
+    } catch (err) {
+      console.warn(err);
+      showToast('Paste failed', 'error');
     }
   }
 });
@@ -2813,18 +2888,15 @@ document.addEventListener('keydown', async e => {
       selectAllPages();
       return;
     }
-    if (mode !== 'view') {
-      if (k === 'c') { if (copySelection()) e.preventDefault(); return; }
-      if (k === 'v') {
-        const hasInternal = annotationClipboard.length > 0 ||
-          (pageImageClipboard && inst && inst.selection.includes(inst.pageElement));
-        if (hasInternal) {
-          e.preventDefault();
-          pasteClipboard();
-        }
-        return;
-      }
-      if (k === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (k === 'c' && mode !== 'view') {
+      e.preventDefault();
+      copySelection();
+      return;
+    }
+    if (k === 'd' && mode !== 'view') {
+      e.preventDefault();
+      duplicateSelection();
+      return;
     }
     if (k === '+' || k === '=') { e.preventDefault(); zoomIn(true); return; }
     if (k === '-') { e.preventDefault(); zoomOut(true); return; }
