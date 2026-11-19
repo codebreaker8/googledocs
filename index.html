@@ -419,6 +419,87 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
   border-radius:5px; padding:1px 7px; font-family:ui-monospace,monospace;
   font-size:11px; color:var(--text); font-weight:600;
 }
+
+/* ==================== ROOM / SYNC ==================== */
+.roomSection {
+  margin-top:44px;
+  background:var(--surface-solid);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px;
+}
+.roomHeader { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+.roomTitle { font-size:17px; font-weight:700; letter-spacing:-0.01em; display:flex; align-items:center; gap:8px; }
+.roomSub { font-size:12px; color:var(--text-dim); margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.roomSub code {
+  background:var(--bg2); border:1px solid var(--border); padding:1px 7px;
+  border-radius:5px; font-size:11px; font-family:ui-monospace,monospace;
+}
+.syncDot {
+  width:8px; height:8px; border-radius:50%; display:inline-block;
+  background:var(--text-dim); transition:background .25s, box-shadow .25s;
+}
+.syncDot.online { background:var(--success); box-shadow:0 0 8px var(--success); }
+.syncDot.offline { background:var(--danger); }
+.roomActions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+.membersList { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
+.membersEmpty {
+  grid-column:1/-1; text-align:center; padding:28px 12px;
+  color:var(--text-dim); font-size:13px; line-height:1.6;
+}
+.memberCard {
+  display:flex; align-items:center; gap:12px; padding:12px;
+  border:1px solid var(--border); border-radius:10px; background:var(--bg2);
+  transition:border-color .15s;
+}
+.memberCard:hover { border-color:var(--border-strong); }
+.memberAvatar {
+  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#7c3aed);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:15px;
+}
+.memberInfo { flex:1; min-width:0; }
+.memberName { font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.memberName > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.memberMeta { font-size:11px; color:var(--text-dim); margin-top:3px; display:flex; align-items:center; gap:6px; }
+.memberBadge {
+  font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 7px; border-radius:20px;
+  background:rgba(31,111,235,.16); color:var(--accent);
+  border:1px solid rgba(31,111,235,.35);
+}
+.memberBadge.you { background:rgba(63,185,80,.15); color:var(--success); border-color:rgba(63,185,80,.35); }
+.memberDot { width:7px; height:7px; border-radius:50%; background:var(--text-dim); flex-shrink:0; }
+.memberDot.on { background:var(--success); box-shadow:0 0 6px var(--success); }
+.memberBtn { font-size:11px; padding:5px 9px; border-radius:6px; flex-shrink:0; }
+.memberBtn.danger { color:var(--danger); border-color:rgba(248,81,73,.4); }
+.memberBtn.danger:hover { background:rgba(248,81,73,.12); }
+
+.shareContent {
+  background:var(--surface-solid); border:1px solid var(--border);
+  border-radius:14px; padding:24px; max-width:430px; width:100%;
+  text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.6);
+}
+.shareContent h2 { font-size:17px; margin-bottom:6px; letter-spacing:-0.01em; }
+.shareContent p { font-size:12.5px; color:var(--text-dim); line-height:1.55; }
+.qrBox {
+  background:#fff; padding:14px; border-radius:12px;
+  display:inline-block; margin:16px auto 10px; min-width:120px; min-height:120px;
+  line-height:0;
+}
+.qrBox canvas, .qrBox img { display:block; }
+.shareLinkRow { display:flex; gap:6px; margin-top:8px; }
+.shareLinkRow input {
+  flex:1; min-width:0; background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px; padding:8px 10px; color:var(--text);
+  font-size:11.5px; font-family:ui-monospace,monospace;
+}
+.shareNote {
+  margin:14px 0; font-size:11.5px; color:var(--text-dim);
+  background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
+  border-radius:8px; padding:9px 11px; text-align:left; line-height:1.55;
+}
 </style>
 </head>
 <body>
@@ -435,6 +516,28 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
       </div>
     </header>
     <div id="homeGrid" class="homeGrid"></div>
+
+    <!-- ==================== ROOM MEMBERS SECTION ==================== -->
+    <section class="roomSection">
+      <div class="roomHeader">
+        <div>
+          <div class="roomTitle">👥 Room Members</div>
+          <div class="roomSub">
+            <span>Room:</span><code id="roomIdLabel">—</code>
+            <span id="syncDot" class="syncDot offline"></span>
+            <span id="syncLabel">Connecting…</span>
+          </div>
+        </div>
+        <div class="roomActions">
+          <button class="btn-primary" id="shareBtn" style="display:none" onclick="openShareModal()">➕ Add Member</button>
+          <button class="btn-glass" id="joinBtn" style="display:none" onclick="joinRoom()">🔗 Join Room</button>
+          <button class="btn-glass" id="leaveBtn" style="display:none" onclick="leaveRoom()">🚪 Leave Room</button>
+        </div>
+      </div>
+      <div id="membersList" class="membersList">
+        <div class="membersEmpty">Loading room…</div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -617,11 +720,57 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
   </div>
 </div>
 
+<!-- ==================== SHARE / ADD MEMBER MODAL ==================== -->
+<div id="shareModal" class="shortcutsModal">
+  <div class="shareContent">
+    <h2>➕ Add a member</h2>
+    <p>Scan this QR code on the other device. It will open this same app and join this room automatically.</p>
+    <div id="qrBox" class="qrBox"></div>
+    <div class="shareLinkRow">
+      <input id="shareLink" readonly onclick="this.select()" />
+      <button onclick="copyShareLink()">Copy</button>
+    </div>
+    <div class="shareNote">
+      ⚠️ Once joined, the member stays connected <b>permanently</b> — until you reject/remove them
+      or they leave the room themselves.
+    </div>
+    <button class="btn-primary" onclick="closeShareModal()">Done</button>
+  </div>
+</div>
+
 <input type="file" id="fileUpload" accept="application/pdf,image/*" multiple style="display:none" />
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<!-- ==================== FIREBASE (MODULAR CDN) ==================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getDatabase, ref, set, get, onValue, update, remove, onDisconnect
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCInBv3nuNYblL_Yw7-rM2g-nlQ-9_EBW4",
+    authDomain: "sync-app-7a7b8.firebaseapp.com",
+    databaseURL: "https://sync-app-7a7b8-default-rtdb.firebaseio.com",
+    projectId: "sync-app-7a7b8",
+    storageBucket: "sync-app-7a7b8.firebasestorage.app",
+    messagingSenderId: "654073080180",
+    appId: "1:654073080180:web:67b010bf64541b4b4b6421"
+  };
+
+  try {
+    const fbApp = initializeApp(firebaseConfig);
+    const db = getDatabase(fbApp);
+    window.FB = { db, ref, set, get, onValue, update, remove, onDisconnect };
+  } catch (err) {
+    console.warn('Firebase init failed:', err);
+  }
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -678,34 +827,51 @@ function showSaveStatus(status) {
   }
 }
 
+/* ---------- serialization (shared by IndexedDB + Firebase) ---------- */
+function serializeApp() {
+  return {
+    ...app,
+    documents: app.documents.map(d => ({
+      ...d,
+      pages: d.pages.map(p => {
+        const c = {...p};
+        c.elements = (p.elements||[]).map(el => { const x = {...el}; delete x._img; return x; });
+        if (c.pageElement) c.pageElement = {...p.pageElement};
+        return c;
+      })
+    })),
+    toolState: {
+      color: toolState.color, fillColor: toolState.fillColor, fill: toolState.fill,
+      strokeWidth: toolState.strokeWidth, strokeStyle: toolState.strokeStyle,
+      locked: toolState.locked, laserColor: toolState.laserColor,
+      laserSize: toolState.laserSize, laserFade: toolState.laserFade,
+      laserMode: toolState.laserMode, eraserMode: toolState.eraserMode
+    }
+  };
+}
+
+function hydrateImages() {
+  for (const d of app.documents) {
+    for (const p of d.pages) {
+      (p.elements || []).forEach(el => {
+        if (el.type === 'image' && el.src) { const im = new Image(); im.src = el.src; el._img = im; }
+      });
+    }
+  }
+}
+
 async function saveApp() {
+  const shouldPush = !applyingRemote;
   try {
     showSaveStatus('Saving…');
-    const clean = {
-      ...app,
-      documents: app.documents.map(d => ({
-        ...d,
-        pages: d.pages.map(p => {
-          const c = {...p};
-          c.elements = (p.elements||[]).map(el => { const x = {...el}; delete x._img; return x; });
-          if (c.pageElement) c.pageElement = {...p.pageElement};
-          return c;
-        })
-      })),
-      toolState: {
-        color: toolState.color, fillColor: toolState.fillColor, fill: toolState.fill,
-        strokeWidth: toolState.strokeWidth, strokeStyle: toolState.strokeStyle,
-        locked: toolState.locked, laserColor: toolState.laserColor,
-        laserSize: toolState.laserSize, laserFade: toolState.laserFade,
-        laserMode: toolState.laserMode, eraserMode: toolState.eraserMode
-      }
-    };
+    const clean = serializeApp();
     const db = await openDB();
     const tx = db.transaction(DB_STORE, 'readwrite');
     tx.objectStore(DB_STORE).put(JSON.stringify(clean), DB_KEY);
     await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     showSaveStatus('Saved');
   } catch (e) { console.warn(e); showSaveStatus('Save failed'); showToast('Save failed', 'error'); }
+  if (shouldPush) schedulePush();
 }
 
 async function loadApp() {
@@ -736,13 +902,7 @@ async function loadApp() {
     const lockBtn = document.getElementById('lockBtn');
     lockBtn.textContent = toolState.locked ? '🔒' : '🔓';
     lockBtn.classList.toggle('locked', toolState.locked);
-    for (const d of app.documents) {
-      for (const p of d.pages) {
-        (p.elements || []).forEach(el => {
-          if (el.type === 'image' && el.src) { const im = new Image(); im.src = el.src; el._img = im; }
-        });
-      }
-    }
+    hydrateImages();
   } catch (e) { console.warn(e); }
 }
 
@@ -2844,6 +3004,11 @@ document.addEventListener('paste', async (e) => {
   }
 });
 
+/* ================================================================
+   KEYBOARD
+   ================================================================ */
+let spacePrevTool = null;
+
 document.addEventListener('keydown', async e => {
   if (e.key === 'Shift') shiftHeld = true;
   const tag = e.target.tagName;
@@ -2856,6 +3021,11 @@ document.addEventListener('keydown', async e => {
   }
   if (e.key === 'Escape' && document.getElementById('shortcutsModal').classList.contains('open')) {
     toggleShortcuts();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'Escape' && document.getElementById('shareModal').classList.contains('open')) {
+    closeShareModal();
     e.preventDefault();
     return;
   }
@@ -2882,132 +3052,604 @@ document.addEventListener('keydown', async e => {
       return;
     }
     if (k === 'y') { e.preventDefault(); redoActive(); return; }
-    if (k === 's') { e.preventDefault(); saveApp().then(() => showToast('Saved', 'success')); return; }
-    if (k === 'a' && mode !== 'view') {
-      e.preventDefault();
-      selectAllPages();
+    if (k === 'c') { if (copySelection()) e.preventDefault(); return; }
+    if (k === 'v') {
+      if (pageImageClipboard || annotationClipboard.length) { e.preventDefault(); pasteClipboard(); }
       return;
     }
-    if (k === 'c' && mode !== 'view') {
-      e.preventDefault();
-      copySelection();
-      return;
-    }
-    if (k === 'd' && mode !== 'view') {
-      e.preventDefault();
-      duplicateSelection();
-      return;
-    }
-    if (k === '+' || k === '=') { e.preventDefault(); zoomIn(true); return; }
+    if (k === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (k === 's') { e.preventDefault(); saveApp(); showToast('Saved', 'success'); return; }
+    if (k === 'a') { e.preventDefault(); selectAllPages(); return; }
+    if (k === '=' || k === '+') { e.preventDefault(); zoomIn(true); return; }
     if (k === '-') { e.preventDefault(); zoomOut(true); return; }
     if (k === '0') { e.preventDefault(); zoomReset(true); return; }
     return;
   }
 
-  if ((k === 'delete' || k === 'backspace') && mode !== 'view') {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (!spacePrevTool) { spacePrevTool = toolState.tool; setActiveTool('pan'); }
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (inst) { inst.setSelection([]); inst.render(); }
+    clearPageSelection();
+    return;
+  }
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedPages.size > 0) { e.preventDefault(); deleteSelectedPages(); return; }
     if (inst && inst.selection.length > 0) {
       e.preventDefault();
-      const pageSelected = inst.selection.includes(inst.pageElement);
-      const otherEls = inst.selection.filter(el => el !== inst.pageElement);
-      let msg = '';
-      if (pageSelected && otherEls.length > 0) {
-        msg = `Delete the page image AND ${otherEls.length} selected annotation${otherEls.length !== 1 ? 's' : ''}?\n\nThe page will remain but show a blank white page.`;
-      } else if (pageSelected) {
-        msg = 'Delete the page image?\n\nThe page will remain but show a blank white page (no renumbering).';
-      } else if (otherEls.length > 0) {
-        msg = `Delete ${otherEls.length} selected element${otherEls.length !== 1 ? 's' : ''}?`;
-      } else return;
-      if (!confirm(msg)) return;
-      if (pageSelected) inst.pg.blankImage = true;
-      if (otherEls.length > 0) inst.elements = inst.elements.filter(el => !otherEls.includes(el));
-      inst.setSelection([]);
-      inst.pushUndo();
-      inst.save();
-      inst.render();
-      renderSidebar();
-      const parts = [];
-      if (pageSelected) parts.push('page image');
-      if (otherEls.length > 0) parts.push(`${otherEls.length} element(s)`);
-      showToast(parts.join(' + ') + ' deleted', 'success');
-      return;
-    }
-    if (selectedPages.size > 0) {
-      e.preventDefault();
-      deleteSelectedPages();
-      return;
-    }
-    return;
-  }
-
-  if (mode === 'view') {
-    if (k === 'k') setActiveTool('laser');
-    return;
-  }
-
-  if (k === 'c') { document.getElementById('lockBtn').click(); return; }
-  if (k === 'z') { e.preventDefault(); toggleZoomLock(); return; }
-
-  if (k >= '1' && k <= '9') {
-    const doc = getCurrentDoc();
-    if (doc) {
-      const idx = parseInt(k) - 1;
-      if (doc.pages[idx]) {
-        activePageId = doc.pages[idx].id;
-        selectedPages.clear(); selectedPages.add(activePageId); selectedPagesAnchor = idx;
-        updateSidebarActive();
-        const b = document.querySelector(`.pageBlock[data-page-id="${activePageId}"]`);
-        if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const hasPage = inst.selection.includes(inst.pageElement);
+      const others = inst.selection.filter(el => el !== inst.pageElement);
+      if (others.length) {
+        inst.elements = inst.elements.filter(el => !inst.selection.includes(el));
+        showToast(`${others.length} annotation(s) deleted`, 'success');
       }
+      if (hasPage) {
+        inst.pg.blankImage = true;
+        showToast('Page image cleared', 'success');
+      }
+      inst.setSelection([]);
+      inst.pushUndo(); inst.save(); inst.render();
+      return;
     }
     return;
   }
 
-  const map = {
-    g: 'pan', v: 'select', p: 'pen', k: 'laser', h: 'highlighter',
-    e: 'eraser', r: 'rect', o: 'ellipse', l: 'line', a: 'arrow',
-    t: 'text', n: 'sticky'
-  };
-  if (map[k]) setActiveTool(map[k]);
-
-  if (k === 'escape') {
-    e.preventDefault();
-    if (selectedPages.size > 0) clearPageSelection();
-    if (inst) { inst.setSelection([]); inst.render(); }
+  if (/^[1-9]$/.test(e.key)) {
+    const doc = getCurrentDoc();
+    if (doc && doc.pages[+e.key - 1]) {
+      const pg = doc.pages[+e.key - 1];
+      activePageId = pg.id;
+      selectedPages.clear(); selectedPages.add(pg.id); selectedPagesAnchor = +e.key - 1;
+      updateSidebarActive();
+      const b = document.querySelector(`.pageBlock[data-page-id="${pg.id}"]`);
+      if (b) b.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
     return;
   }
-  if (k === ' ' && !e.repeat) { e.preventDefault(); setActiveTool('pan'); }
+
+  if (k === 'z') { toggleZoomLock(); return; }
+  if (k === 'c') {
+    toolState.locked = !toolState.locked;
+    const btn = document.getElementById('lockBtn');
+    btn.textContent = toolState.locked ? '🔒' : '🔓';
+    btn.classList.toggle('locked', toolState.locked);
+    showToast(toolState.locked ? 'Tool locked' : 'Tool unlocked', 'success');
+    saveApp();
+    return;
+  }
+
+  const toolKeys = {
+    v:'select', g:'pan', p:'pen', h:'highlighter', e:'eraser', k:'laser',
+    r:'rect', o:'ellipse', l:'line', a:'arrow', t:'text', n:'sticky'
+  };
+  if (toolKeys[k] && mode === 'edit') { setActiveTool(toolKeys[k]); return; }
 });
+
 document.addEventListener('keyup', e => {
   if (e.key === 'Shift') shiftHeld = false;
-  if (e.key === ' ' && toolState.tool === 'pan' && !toolState.locked) {
-    setActiveTool('select');
+  if (e.code === 'Space' && spacePrevTool) {
+    setActiveTool(spacePrevTool);
+    spacePrevTool = null;
   }
 });
 
-(async function init() {
-  await loadApp();
-  document.documentElement.dataset.theme = app.theme || 'dark';
-  setActiveTool('select');
-  updateLaserBar();
-  initDragDrop();
+/* ================================================================
+   FIREBASE REAL-TIME SYNC  +  QR / ROOM MEMBERS
+   ================================================================ */
 
-  document.getElementById('docScroll').addEventListener('wheel', e => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const doc = getCurrentDoc();
-      if (doc && doc.zoomLocked) return;
-      if (e.deltaY < 0) zoomIn();
-      else zoomOut();
-    }
-  }, { passive: false });
+/* Fixed room id — never changes, never appears in the URL */
+const ROOM_ID = 'codebreaker-room-v1';
+const ROOM_PATH = 'rooms/' + ROOM_ID;
 
-  document.getElementById('docScroll').addEventListener('click', (e) => {
-    if (!e.target.closest('.pageBlock') && selectedPages.size > 0) {
-      clearPageSelection();
+/* --- identity (persistent per browser, no auth) --- */
+let MY_ID = localStorage.getItem('cb_device_id');
+if (!MY_ID) {
+  MY_ID = 'dev_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  localStorage.setItem('cb_device_id', MY_ID);
+}
+let MY_NAME = localStorage.getItem('cb_device_name') || ('Device ' + MY_ID.slice(-4).toUpperCase());
+
+/* --- firebase ready bridge --- */
+let FB = null;
+let fbReadyResolve = null;
+const fbReady = new Promise(res => { fbReadyResolve = res; });
+window.addEventListener('firebase-ready', () => {
+  FB = window.FB || null;
+  fbReadyResolve(FB);
+});
+
+/* --- sync state --- */
+let roomInfo = { ownerId: null, members: {}, connected: false };
+let syncReady = false;
+let applyingRemote = false;
+let deferredRemote = null;
+let pushTimer = null;
+let heartbeatTimer = null;
+let lastLocalUpdate = 0;
+let lastAppliedRemote = 0;
+let pendingJoin = false;
+let wasMember = false;
+let joining = false;
+
+/* --- join link handling (#join=ROOM_ID) : cleaned immediately so refresh never changes the URL --- */
+(function parseJoinHash() {
+  const h = location.hash || '';
+  if (h.startsWith('#join=')) {
+    const rid = decodeURIComponent(h.slice(6));
+    if (rid === ROOM_ID) pendingJoin = true;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  }
+})();
+
+/* --- interaction guard : don't wipe the canvas mid-stroke --- */
+document.addEventListener('pointerdown', () => { window._pointerBusy = true; }, true);
+document.addEventListener('pointerup', () => {
+  window._pointerBusy = false;
+  if (deferredRemote) {
+    const p = deferredRemote; deferredRemote = null;
+    applyRemoteState(p);
+  }
+}, true);
+document.addEventListener('pointercancel', () => { window._pointerBusy = false; }, true);
+
+function isMember() { return !!(roomInfo.members && roomInfo.members[MY_ID]); }
+function isOwner()  { return roomInfo.ownerId === MY_ID; }
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+  ));
+}
+function formatDate(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }); }
+  catch (_) { return '—'; }
+}
+
+/* ---------- push local → cloud ---------- */
+function schedulePush(delay) {
+  if (applyingRemote) return;
+  if (!syncReady || !isMember()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushState, delay === undefined ? 900 : delay);
+}
+
+async function pushState() {
+  if (!syncReady || !isMember()) return;
+  const fb = FB || await fbReady;
+  if (!fb) return;
+  const updatedAt = Date.now();
+  lastLocalUpdate = updatedAt;
+  try {
+    await fb.set(fb.ref(fb.db, ROOM_PATH + '/state'), {
+      updatedAt,
+      updatedBy: MY_ID,
+      data: serializeApp()
+    });
+    updateSyncUI();
+  } catch (err) {
+    console.warn('push failed', err);
+  }
+}
+
+/* ---------- pull cloud → local ---------- */
+function queueRemoteApply(payload) {
+  if (window._pointerBusy) { deferredRemote = payload; return; }
+  applyRemoteState(payload);
+}
+
+function applyRemoteState(payload) {
+  if (!payload || !payload.data) return;
+  applyingRemote = true;
+  try {
+    const d = payload.data;
+    app.folders = Array.isArray(d.folders) ? d.folders : [];
+    app.documents = Array.isArray(d.documents) ? d.documents : [];
+    if (d.toolState) Object.assign(toolState, d.toolState);
+    hydrateImages();
+    syncToolControls();
+
+    /* persist locally without re-pushing */
+    const clean = serializeApp();
+    openDB().then(db => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(JSON.stringify(clean), DB_KEY);
+    }).catch(() => {});
+
+    /* re-render whatever is on screen */
+    const docScreen = document.getElementById('screenDoc');
+    if (docScreen.classList.contains('active') && currentDocId) {
+      if (!app.documents.find(x => x.id === currentDocId)) {
+        closeDoc();
+      } else {
+        const scrollEl = document.getElementById('docScroll');
+        const st = scrollEl.scrollTop;
+        const prevActive = activePageId;
+        renderDocument();
+        if (prevActive && pageInstances[prevActive]) activePageId = prevActive;
+        updateSidebarActive();
+        scrollEl.scrollTop = st;
+        updateZoomLockUI();
+      }
+    } else if (document.getElementById('screenFolder').classList.contains('active')) {
+      renderFolder();
+    } else {
+      renderHome();
     }
+    updateSyncUI();
+  } finally {
+    applyingRemote = false;
+  }
+}
+
+function syncToolControls() {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('colorStroke', toolState.color);
+  set('colorFill', toolState.fillColor);
+  set('strokeWidth', toolState.strokeWidth);
+  set('strokeStyle', toolState.strokeStyle);
+  set('laserColor', toolState.laserColor);
+  const lsv = document.getElementById('laserSizeVal');
+  if (lsv) lsv.textContent = toolState.laserSize;
+  const lfv = document.getElementById('laserFadeVal');
+  if (lfv) lfv.textContent = toolState.laserFade + 'ms';
+  const ft = document.getElementById('fillToggle');
+  if (ft) ft.classList.toggle('active', toolState.fill);
+}
+
+/* ---------- init ---------- */
+async function initSync() {
+  const fb = await Promise.race([
+    fbReady,
+    new Promise(r => setTimeout(() => r(null), 12000))
+  ]);
+
+  const ridEl = document.getElementById('roomIdLabel');
+  if (ridEl) ridEl.textContent = ROOM_ID;
+
+  if (!fb) {
+    const l = document.getElementById('syncLabel');
+    if (l) l.textContent = 'Sync unavailable (offline)';
+    renderMembers();
+    return;
+  }
+
+  const { db, ref, get, set, onValue, remove, update } = fb;
+
+  /* connection badge */
+  onValue(ref(db, '.info/connected'), snap => {
+    roomInfo.connected = !!snap.val();
+    updateSyncUI();
   });
 
-  renderHome(); goScreen('screenHome');
+  /* owner */
+  onValue(ref(db, ROOM_PATH + '/ownerId'), snap => {
+    roomInfo.ownerId = snap.val() || null;
+    updateSyncUI();
+    renderMembers();
+    maybeAutoJoin();
+  });
+
+  /* members (this drives "permanent until removed / leave") */
+  onValue(ref(db, ROOM_PATH + '/members'), snap => {
+    roomInfo.members = snap.val() || {};
+    const me = !!roomInfo.members[MY_ID];
+    if (me) {
+      wasMember = true;
+    } else if (wasMember) {
+      wasMember = false;
+      syncReady = false;
+      showToast('You were removed from the room', 'error');
+    }
+    renderMembers();
+    updateSyncUI();
+    maybeAutoJoin();
+  });
+
+  /* live state */
+  onValue(ref(db, ROOM_PATH + '/state'), snap => {
+    const val = snap.val();
+    if (!val || !val.data) return;
+    if (val.updatedBy === MY_ID) return;           // our own echo
+    if (val.updatedAt <= lastAppliedRemote) return; // stale
+    if (val.updatedAt <= lastLocalUpdate) return;   // we are newer
+    lastAppliedRemote = val.updatedAt;
+    queueRemoteApply(val);
+  });
+
+  /* claim ownership of a fresh room */
+  try {
+    const oSnap = await get(ref(db, ROOM_PATH + '/ownerId'));
+    const ownerId = oSnap.val();
+    if (!ownerId) {
+      await set(ref(db, ROOM_PATH + '/ownerId'), MY_ID);
+      roomInfo.ownerId = MY_ID;
+    } else {
+      roomInfo.ownerId = ownerId;
+    }
+  } catch (err) { console.warn('owner check', err); }
+
+  if (isOwner()) {
+    try {
+      await set(ref(db, ROOM_PATH + '/members/' + MY_ID), {
+        name: MY_NAME, role: 'owner', joinedAt: Date.now(), lastSeen: Date.now()
+      });
+    } catch (_) {}
+    syncReady = true;
+    try {
+      const st = await get(ref(db, ROOM_PATH + '/state'));
+      if (!st.exists()) schedulePush(400);
+    } catch (_) {}
+  } else {
+    maybeAutoJoin();
+  }
+
+  startHeartbeat();
+  updateSyncUI();
+  renderMembers();
+}
+
+/* ---------- joining ---------- */
+async function maybeAutoJoin() {
+  if (!pendingJoin || joining) return;
+  if (!roomInfo.ownerId) return;
+  const fb = FB || await fbReady;
+  if (!fb) return;
+
+  if (isMember()) { pendingJoin = false; await adoptRemoteState(); return; }
+
+  joining = true;
+  try {
+    let n = null;
+    try { n = prompt('Enter your name to join the room:', MY_NAME); } catch (_) {}
+    if (n && n.trim()) {
+      MY_NAME = n.trim().slice(0, 30);
+      localStorage.setItem('cb_device_name', MY_NAME);
+    }
+    await fb.set(fb.ref(fb.db, ROOM_PATH + '/members/' + MY_ID), {
+      name: MY_NAME, role: 'member', joinedAt: Date.now(), lastSeen: Date.now()
+    });
+    pendingJoin = false;
+    showToast('Joined the room — syncing…', 'success');
+    await adoptRemoteState();
+  } catch (err) {
+    console.warn('join failed', err);
+    showToast('Join failed', 'error');
+  } finally {
+    joining = false;
+  }
+}
+
+async function adoptRemoteState() {
+  const fb = FB || await fbReady;
+  if (!fb) return;
+  try {
+    const snap = await fb.get(fb.ref(fb.db, ROOM_PATH + '/state'));
+    if (snap.exists()) {
+      const val = snap.val();
+      lastAppliedRemote = val.updatedAt || 0;
+      applyRemoteState(val);
+    }
+  } catch (err) { console.warn('adopt state', err); }
+  syncReady = true;
+}
+
+async function joinRoom() {
+  if (isMember()) return;
+  if (!roomInfo.ownerId) return showToast('Room is still initialising…', 'error');
+  pendingJoin = true;
+  await maybeAutoJoin();
+}
+
+async function leaveRoom() {
+  if (!isMember()) return;
+  if (isOwner()) return showToast('Owner cannot leave — remove members instead', 'error');
+  if (!confirm('Leave this room? You will stop syncing and lose access.')) return;
+  const fb = FB || await fbReady;
+  try {
+    await fb.remove(fb.ref(fb.db, ROOM_PATH + '/members/' + MY_ID));
+    syncReady = false;
+    showToast('You left the room', 'success');
+  } catch (err) { console.warn(err); showToast('Failed to leave', 'error'); }
+}
+
+async function removeMember(id) {
+  if (!isOwner() || id === MY_ID) return;
+  if (!confirm('Reject and remove this member? Their access ends immediately.')) return;
+  const fb = FB || await fbReady;
+  try {
+    await fb.remove(fb.ref(fb.db, ROOM_PATH + '/members/' + id));
+    showToast('Member removed', 'success');
+  } catch (err) { console.warn(err); showToast('Failed to remove', 'error'); }
+}
+
+function startHeartbeat() {
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(async () => {
+    if (!isMember()) return;
+    const fb = FB;
+    if (!fb) return;
+    try {
+      await fb.update(fb.ref(fb.db, ROOM_PATH + '/members/' + MY_ID), { lastSeen: Date.now() });
+    } catch (_) {}
+  }, 25000);
+}
+
+/* ---------- UI ---------- */
+function updateSyncUI() {
+  const rid = document.getElementById('roomIdLabel');
+  if (rid) rid.textContent = ROOM_ID;
+
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  const shareBtn = document.getElementById('shareBtn');
+  const joinBtn = document.getElementById('joinBtn');
+  const leaveBtn = document.getElementById('leaveBtn');
+
+  if (dot) dot.className = 'syncDot ' + ((roomInfo.connected && isMember()) ? 'online' : 'offline');
+
+  if (label) {
+    if (!roomInfo.connected) label.textContent = 'Connecting…';
+    else if (isOwner()) label.textContent = 'Live · you are the owner';
+    else if (isMember()) label.textContent = 'Live · synced';
+    else if (roomInfo.ownerId) label.textContent = 'Not joined';
+    else label.textContent = 'Initialising…';
+  }
+
+  if (shareBtn) shareBtn.style.display = isOwner() ? '' : 'none';
+  if (joinBtn) joinBtn.style.display = (!isMember() && roomInfo.ownerId) ? '' : 'none';
+  if (leaveBtn) leaveBtn.style.display = (isMember() && !isOwner()) ? '' : 'none';
+}
+
+function renderMembers() {
+  const el = document.getElementById('membersList');
+  if (!el) return;
+
+  const members = roomInfo.members || {};
+  const ids = Object.keys(members);
+
+  if (!roomInfo.ownerId) {
+    el.innerHTML = `<div class="membersEmpty">Connecting to the room…</div>`;
+    return;
+  }
+  if (ids.length === 0) {
+    el.innerHTML = `<div class="membersEmpty">
+      No members yet — click <b>Add Member</b> and let someone scan the QR to view your activity.
+    </div>`;
+    return;
+  }
+
+  ids.sort((a, b) => {
+    if (a === roomInfo.ownerId) return -1;
+    if (b === roomInfo.ownerId) return 1;
+    return (members[a].joinedAt || 0) - (members[b].joinedAt || 0);
+  });
+
+  el.innerHTML = '';
+  for (const id of ids) {
+    const m = members[id] || {};
+    const isMe = id === MY_ID;
+    const own = id === roomInfo.ownerId || m.role === 'owner';
+    const online = m.lastSeen && (Date.now() - m.lastSeen < 70000);
+
+    const card = document.createElement('div');
+    card.className = 'memberCard';
+    card.innerHTML = `
+      <div class="memberAvatar">${escapeHtml((m.name || '?').trim().charAt(0).toUpperCase() || '?')}</div>
+      <div class="memberInfo">
+        <div class="memberName">
+          <span>${escapeHtml(m.name || 'Unknown device')}</span>
+          ${own ? '<span class="memberBadge">Owner</span>' : ''}
+          ${isMe ? '<span class="memberBadge you">You</span>' : ''}
+        </div>
+        <div class="memberMeta">
+          <span class="memberDot ${online ? 'on' : ''}"></span>
+          ${online ? 'Online' : 'Offline'} · joined ${formatDate(m.joinedAt)}
+        </div>
+      </div>
+    `;
+
+    if (isOwner() && !isMe) {
+      const b = document.createElement('button');
+      b.className = 'memberBtn danger';
+      b.textContent = 'Reject';
+      b.onclick = () => removeMember(id);
+      card.appendChild(b);
+    } else if (isMe && !own) {
+      const b = document.createElement('button');
+      b.className = 'memberBtn danger';
+      b.textContent = 'Leave';
+      b.onclick = () => leaveRoom();
+      card.appendChild(b);
+    }
+    el.appendChild(card);
+  }
+}
+
+/* ---------- QR / share modal ---------- */
+function shareUrl() {
+  return location.href.split('#')[0] + '#join=' + encodeURIComponent(ROOM_ID);
+}
+
+function ensureQRCodeLib(cb) {
+  if (window.QRCode) return cb(true);
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  s.onload = () => cb(!!window.QRCode);
+  s.onerror = () => cb(false);
+  document.head.appendChild(s);
+}
+
+function openShareModal() {
+  if (!isOwner()) return showToast('Only the owner can add members', 'error');
+  const modal = document.getElementById('shareModal');
+  modal.classList.add('open');
+
+  const url = shareUrl();
+  const link = document.getElementById('shareLink');
+  if (link) link.value = url;
+
+  const box = document.getElementById('qrBox');
+  box.innerHTML = '<div style="color:#888;font-size:12px;padding:34px 10px;line-height:1.6">Generating QR…</div>';
+
+  ensureQRCodeLib(ok => {
+    box.innerHTML = '';
+    if (!ok) {
+      box.innerHTML = '<div style="color:#c00;font-size:12px;padding:30px 10px">QR library could not load.<br>Use the link below instead.</div>';
+      return;
+    }
+    try {
+      new QRCode(box, {
+        text: url,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (err) {
+      console.warn(err);
+      box.innerHTML = '<div style="color:#c00;font-size:12px;padding:30px 10px">QR failed — use the link below.</div>';
+    }
+  });
+}
+
+function closeShareModal() {
+  document.getElementById('shareModal').classList.remove('open');
+}
+
+async function copyShareLink() {
+  const input = document.getElementById('shareLink');
+  if (!input) return;
+  input.select();
+  try {
+    await navigator.clipboard.writeText(input.value);
+    showToast('Link copied', 'success');
+  } catch (_) {
+    try { document.execCommand('copy'); showToast('Link copied', 'success'); }
+    catch (e) { showToast('Copy failed', 'error'); }
+  }
+}
+
+/* ================================================================
+   BOOT
+   ================================================================ */
+(async function boot() {
+  await loadApp();
+  document.documentElement.dataset.theme = app.theme || 'dark';
+  renderHome();
+  initDragDrop();
+
+  const rid = document.getElementById('roomIdLabel');
+  if (rid) rid.textContent = ROOM_ID;
+  renderMembers();
+
+  initSync();
 })();
 </script>
 </body>
