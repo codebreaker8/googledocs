@@ -32,7 +32,6 @@ button {
   transition:all .15s ease;
 }
 button:hover { background:var(--border); transform:translateY(-1px); }
-button:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
 .btn-primary:hover { background:var(--accent-hover); border-color:var(--accent-hover); }
 .btn-glass { background:var(--surface); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border); }
@@ -420,7 +419,6 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
   border-radius:5px; padding:1px 7px; font-family:ui-monospace,monospace;
   font-size:11px; color:var(--text); font-weight:600;
 }
-
 .roomSection {
   margin-top:44px;
   background:var(--surface-solid);
@@ -475,7 +473,6 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
 .memberBtn { font-size:11px; padding:5px 9px; border-radius:6px; flex-shrink:0; }
 .memberBtn.danger { color:var(--danger); border-color:rgba(248,81,73,.4); }
 .memberBtn.danger:hover { background:rgba(248,81,73,.12); }
-
 .shareContent {
   background:var(--surface-solid); border:1px solid var(--border);
   border-radius:14px; padding:24px; max-width:430px; width:100%;
@@ -500,13 +497,6 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
   background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
   border-radius:8px; padding:9px 11px; text-align:left; line-height:1.55;
 }
-.pwdInput {
-  width:100%; background:var(--bg2); border:1px solid var(--border);
-  border-radius:8px; padding:10px 12px; color:var(--text);
-  font-size:14px; font-family:inherit; outline:none;
-  margin:14px 0 6px; letter-spacing:.15em; text-align:center;
-}
-.pwdInput:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,111,235,.15); }
 </style>
 </head>
 <body>
@@ -535,7 +525,7 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
           </div>
         </div>
         <div class="roomActions">
-          <button class="btn-glass" id="claimOwnerBtn" style="display:none" onclick="openOwnerPwdModal()">🔑 Become Owner</button>
+          <button class="btn-primary" id="claimOwnerBtn" onclick="openOwnerPwdModal()">🔑 Become Owner</button>
           <button class="btn-primary" id="shareBtn" style="display:none" onclick="openShareModal()">➕ Add Member</button>
           <button class="btn-glass" id="joinBtn" style="display:none" onclick="joinRoom()">🔗 Join Room</button>
           <button class="btn-glass" id="leaveBtn" style="display:none" onclick="leaveRoom()">🚪 Leave Room</button>
@@ -746,15 +736,14 @@ body.single-page.view-only #presentationBadge { background:#f59e0b; color:#000; 
 
 <div id="ownerPwdModal" class="shortcutsModal">
   <div class="shareContent">
-    <h2>🔑 Owner Access</h2>
-    <p>Enter the owner password to take control of this room.<br>This device will become the permanent owner.</p>
-    <input type="password" id="ownerPwdInput" class="pwdInput" placeholder="• • • • • • • •" autocomplete="off" spellcheck="false" />
-    <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+    <h2>🔑 Become Owner</h2>
+    <p>Enter the owner password to claim this room.</p>
+    <div class="shareLinkRow">
+      <input id="ownerPwdInput" type="password" placeholder="Enter password" />
       <button class="btn-primary" id="ownerPwdSubmit" onclick="submitOwnerPassword()">Unlock</button>
-      <button onclick="closeOwnerPwdModal()">Cancel</button>
     </div>
-    <div class="shareNote" style="margin-top:14px">
-      ⚠️ If a previous owner exists, entering the correct password will transfer ownership to this device.
+    <div style="margin-top:14px;">
+      <button onclick="closeOwnerPwdModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -813,10 +802,18 @@ let selectedPagesAnchor = -1;
 let pageDeleteHistory = [];
 
 let toolState = {
-  tool: 'select', color: '#ff6b6b', fillColor: '#1f6feb', fill: false,
-  strokeWidth: 3, strokeStyle: 'solid', locked: false,
-  laserColor: '#ef4444', laserSize: 4, laserFade: 700,
-  laserMode: 'trail', eraserMode: 'full'
+  tool: 'select',
+  color: '#ff6b6b',
+  fillColor: '#1f6feb',
+  fill: false,
+  strokeWidth: 3,
+  strokeStyle: 'solid',
+  locked: false,
+  laserColor: '#ef4444',
+  laserSize: 4,
+  laserFade: 700,
+  laserMode: 'trail',
+  eraserMode: 'full'
 };
 
 function openDB() {
@@ -987,7 +984,10 @@ document.getElementById('lockBtn').onclick = (e) => {
   const btn = e.currentTarget;
   btn.textContent = toolState.locked ? '🔒' : '🔓';
   btn.classList.toggle('locked', toolState.locked);
-  showToast(toolState.locked ? 'Locked — current tool stays active after use' : 'Unlocked — tools return to select after use', 'success');
+  showToast(
+    toolState.locked ? 'Locked — current tool stays active after use' : 'Unlocked — tools return to select after use',
+    'success'
+  );
   saveApp();
 };
 document.getElementById('colorStroke').oninput = e => { toolState.color = e.target.value; saveApp(); };
@@ -1050,15 +1050,24 @@ function copySelection() {
     inst = pageInstances[activePageId];
     if (inst) updateSidebarActive();
   }
-  if (!inst) { showToast('Open a document first', 'error'); return false; }
+  if (!inst) {
+    showToast('Open a document first', 'error');
+    return false;
+  }
   const pageSelected = inst.selection.includes(inst.pageElement);
   const otherEls = inst.selection.filter(el => el !== inst.pageElement);
   const forgivingPageCopy = !pageSelected && otherEls.length === 0 && inst.pg.baseDataUrl && !inst.pg.blankImage;
+
   pageImageClipboard = null;
   annotationClipboard = [];
   let didCopy = false;
+
   if ((pageSelected || forgivingPageCopy) && inst.pg.baseDataUrl && !inst.pg.blankImage) {
-    pageImageClipboard = { dataUrl: inst.pg.baseDataUrl, width: inst.pg.width, height: inst.pg.height };
+    pageImageClipboard = {
+      dataUrl: inst.pg.baseDataUrl,
+      width: inst.pg.width,
+      height: inst.pg.height
+    };
     didCopy = true;
   }
   if (otherEls.length > 0) {
@@ -1071,7 +1080,8 @@ function copySelection() {
     didCopy = true;
   }
   if (!didCopy) {
-    showToast(inst.pg.blankImage ? 'Page is blank — nothing to copy' : 'Nothing to copy', 'error');
+    if (inst.pg.blankImage) showToast('Page is blank — nothing to copy', 'error');
+    else showToast('Nothing to copy', 'error');
     return false;
   }
   const parts = [];
@@ -1099,7 +1109,9 @@ function pasteClipboard() {
   const willPasteImage = !!pageImageClipboard;
   const willPasteEls = annotationClipboard.length > 0;
   if (!willPasteImage && !willPasteEls) return false;
+
   inst.pushUndo();
+
   if (willPasteImage) {
     inst.pg.baseDataUrl = pageImageClipboard.dataUrl;
     inst.pg.blankImage = false;
@@ -1117,7 +1129,10 @@ function pasteClipboard() {
     inst.elements.push(...newEls);
     inst.setSelection(newEls);
   }
-  inst.save(); inst.render(); renderSidebar();
+  inst.save();
+  inst.render();
+  renderSidebar();
+
   const parts = [];
   if (willPasteImage) parts.push('page image');
   if (willPasteEls) parts.push(`${annotationClipboard.length} annotation(s)`);
@@ -1129,7 +1144,10 @@ function duplicateSelection() {
   const inst = ensureActiveInstance();
   if (!inst || inst.selection.length === 0) return;
   const otherEls = inst.selection.filter(el => el !== inst.pageElement);
-  if (otherEls.length === 0) { showToast('Page image cannot be duplicated — use Ctrl C / V', 'error'); return; }
+  if (otherEls.length === 0) {
+    showToast('Page image cannot be duplicated — use Ctrl C / V', 'error');
+    return;
+  }
   const OFFSET = 15;
   const newEls = otherEls.map(el => {
     const c = {...el};
@@ -1150,19 +1168,41 @@ function canZoomFromUI() {
   if (!doc) return false;
   if (doc.zoomLocked) {
     const now = Date.now();
-    if (now - _zoomLockToastT > 1500) { showToast('Zoom locked — use Ctrl +/− anyway', 'error'); _zoomLockToastT = now; }
+    if (now - _zoomLockToastT > 1500) {
+      showToast('Zoom locked — use Ctrl +/− anyway', 'error');
+      _zoomLockToastT = now;
+    }
     return false;
   }
   return true;
 }
-function zoomIn(force) { if (!force && !canZoomFromUI()) return; const doc = getCurrentDoc(); if (!doc) return; doc.zoom = Math.min(3, (doc.zoom || 1) * 1.2); applyZoom(); }
-function zoomOut(force) { if (!force && !canZoomFromUI()) return; const doc = getCurrentDoc(); if (!doc) return; doc.zoom = Math.max(0.3, (doc.zoom || 1) / 1.2); applyZoom(); }
-function zoomReset(force) { if (!force && !canZoomFromUI()) return; const doc = getCurrentDoc(); if (!doc) return; doc.zoom = 1; applyZoom(); }
-function toggleZoomLock() {
+function zoomIn(force) {
+  if (!force && !canZoomFromUI()) return;
   const doc = getCurrentDoc(); if (!doc) return;
+  doc.zoom = Math.min(3, (doc.zoom || 1) * 1.2);
+  applyZoom();
+}
+function zoomOut(force) {
+  if (!force && !canZoomFromUI()) return;
+  const doc = getCurrentDoc(); if (!doc) return;
+  doc.zoom = Math.max(0.3, (doc.zoom || 1) / 1.2);
+  applyZoom();
+}
+function zoomReset(force) {
+  if (!force && !canZoomFromUI()) return;
+  const doc = getCurrentDoc(); if (!doc) return;
+  doc.zoom = 1;
+  applyZoom();
+}
+function toggleZoomLock() {
+  const doc = getCurrentDoc();
+  if (!doc) return;
   doc.zoomLocked = !doc.zoomLocked;
   updateZoomLockUI();
-  showToast(doc.zoomLocked ? '🔒 Zoom buttons locked — Ctrl +/− still works' : '🔓 Zoom unlocked', 'success');
+  showToast(
+    doc.zoomLocked ? '🔒 Zoom buttons locked — Ctrl +/− still works' : '🔓 Zoom unlocked',
+    'success'
+  );
   saveApp();
 }
 function updateZoomLockUI() {
@@ -1188,7 +1228,9 @@ function applyZoom() {
   saveApp();
 }
 
-function toggleShortcuts() { document.getElementById('shortcutsModal').classList.toggle('open'); }
+function toggleShortcuts() {
+  document.getElementById('shortcutsModal').classList.toggle('open');
+}
 
 function goScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1204,7 +1246,8 @@ function openFolder(id) {
 function closeDoc() {
   if (mode !== 'edit') exitSinglePage();
   pageInstances = {}; activePageId = null; currentDocId = null;
-  annotationClipboard = []; pageImageClipboard = null;
+  annotationClipboard = [];
+  pageImageClipboard = null;
   selectedPages.clear(); selectedPagesAnchor = -1;
   currentFolderId ? openFolder(currentFolderId) : goHome();
 }
@@ -1329,9 +1372,11 @@ function buildPageBlock(pg, idx) {
   let PW = Math.min(maxPageW, pg.width / 2);
   let PH = PW * (pg.height / pg.width);
   if (PH > maxPageH) { PH = maxPageH; PW = PH * (pg.width / pg.height); }
+
   const PAD = { top: PAD_TOP, right: Math.max(PW, PAD_RIGHT_MIN), bottom: PAD_BOTTOM, left: PAD_LEFT };
   const CW = PAD.left + PW + PAD.right;
   const CH = PAD.top + PH + PAD.bottom;
+
   const block = document.createElement('div');
   block.className = 'pageBlock';
   block.dataset.pageId = pg.id;
@@ -1339,22 +1384,26 @@ function buildPageBlock(pg, idx) {
   block.style.height = CH + 'px';
   block.style.minWidth = CW + 'px';
   block.style.marginBottom = PAGE_GAP + 'px';
+
   const num = document.createElement('div');
   num.className = 'pageNum';
   num.textContent = 'Layer ' + (idx + 1);
   num.style.left = PAD.left + 'px'; num.style.top = (PAD.top - 24) + 'px';
   block.appendChild(num);
+
   const canvas = document.createElement('canvas');
   canvas.className = 'pageCanvas';
   const DPR = 2;
   canvas.width = CW * DPR; canvas.height = CH * DPR;
   canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
   block.appendChild(canvas);
+
   const laser = document.createElement('canvas');
   laser.className = 'laserCanvas';
   laser.width = CW * DPR; laser.height = CH * DPR;
   laser.style.width = CW + 'px'; laser.style.height = CH + 'px';
   block.appendChild(laser);
+
   block._layout = { PW, PH, PAD, CW, CH, DPR };
   return block;
 }
@@ -1465,16 +1514,23 @@ class PageInstance {
     this.elements = Array.isArray(pg.elements) ? pg.elements : [];
     this.elements.forEach(el => {
       if (el.type === 'image' && el.src && !el._img) {
-        const im = new Image(); im.src = el.src; el._img = im;
+        const im = new Image();
+        im.src = el.src;
+        el._img = im;
       }
     });
+
     const { PAD, PW, PH } = this.layout;
     this.pageElement = pg.pageElement ? {...pg.pageElement} : {
-      type: 'page', x1: PAD.left, y1: PAD.top, x2: PAD.left + PW, y2: PAD.top + PH
+      type: 'page',
+      x1: PAD.left, y1: PAD.top,
+      x2: PAD.left + PW, y2: PAD.top + PH
     };
+
     this.pageImg = new Image();
     this.pageImg.src = pg.baseDataUrl || make1x1White();
     this.pageImg.onload = () => this.render();
+
     this.selection = [];
     this.selected = null;
     this.mode = null;
@@ -1488,7 +1544,9 @@ class PageInstance {
     this._laserRAF = null;
     this._pointerRAF = null;
     this._currentTool = null;
+
     this.undoStack.push(this._snapshot());
+
     this.attachEvents();
     if (this.pageImg.complete) this.render();
   }
@@ -1513,7 +1571,10 @@ class PageInstance {
     const rect = this.canvas.getBoundingClientRect();
     const sx = this.layout.CW / rect.width;
     const sy = this.layout.CH / rect.height;
-    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+    return {
+      x: (e.clientX - rect.left) * sx,
+      y: (e.clientY - rect.top) * sy
+    };
   }
 
   attachEvents() {
@@ -1552,7 +1613,11 @@ class PageInstance {
 
   resetPageSize() {
     const { PAD, PW, PH } = this.layout;
-    this.pageElement = { type: 'page', x1: PAD.left, y1: PAD.top, x2: PAD.left + PW, y2: PAD.top + PH };
+    this.pageElement = {
+      type: 'page',
+      x1: PAD.left, y1: PAD.top,
+      x2: PAD.left + PW, y2: PAD.top + PH
+    };
     this.setSelection([this.pageElement]);
     this.pushUndo(); this.save(); this.render();
     showToast('Page position & size reset', 'success');
@@ -1561,7 +1626,8 @@ class PageInstance {
   getResizeHandles(el) {
     if (!isResizable(el)) return [];
     const b = getBounds(el);
-    const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+    const cx = (b.x1 + b.x2) / 2;
+    const cy = (b.y1 + b.y2) / 2;
     return [
       { name:'nw', x: b.x1, y: b.y1, cursor:'nwse-resize' },
       { name:'n',  x: cx,   y: b.y1, cursor:'ns-resize'   },
@@ -1579,7 +1645,9 @@ class PageInstance {
     const w = pe.x2 - pe.x1, h = pe.y2 - pe.y1;
     if (w <= 0 || h <= 0) return;
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.42)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 6;
+    ctx.shadowColor = 'rgba(0,0,0,0.42)';
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 6;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(pe.x1, pe.y1, w, h);
     ctx.restore();
@@ -1587,7 +1655,8 @@ class PageInstance {
       ctx.drawImage(this.pageImg, pe.x1, pe.y1, w, h);
     }
     ctx.save();
-    ctx.strokeStyle = 'rgba(128,128,128,0.28)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(128,128,128,0.28)';
+    ctx.lineWidth = 1;
     ctx.strokeRect(pe.x1 + 0.5, pe.y1 + 0.5, w - 1, h - 1);
     ctx.restore();
   }
@@ -1623,7 +1692,9 @@ class PageInstance {
       ctx.setLineDash([]);
       const handles = this.getResizeHandles(el);
       handles.forEach(h => {
-        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1f6feb'; ctx.lineWidth = 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#1f6feb';
+        ctx.lineWidth = 2;
         ctx.fillRect(h.x - 6, h.y - 6, 12, 12);
         ctx.strokeRect(h.x - 6, h.y - 6, 12, 12);
       });
@@ -1634,7 +1705,9 @@ class PageInstance {
         minX = Math.min(minX, b.x1); minY = Math.min(minY, b.y1);
         maxX = Math.max(maxX, b.x2); maxY = Math.max(maxY, b.y2);
       }
-      ctx.strokeStyle = '#1f6feb'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#1f6feb';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
       ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
       ctx.setLineDash([]);
     }
@@ -1702,7 +1775,9 @@ class PageInstance {
             this.renderLaserPointer();
             this._pointerRAF = null;
           }
-        } else { this._pointerRAF = null; }
+        } else {
+          this._pointerRAF = null;
+        }
       };
       this._pointerRAF = requestAnimationFrame(tick);
     }
@@ -1724,9 +1799,13 @@ class PageInstance {
     grad.addColorStop(0.4, `rgba(${color.r},${color.g},${color.b},${alpha * 0.6})`);
     grad.addColorStop(1, `rgba(${color.r},${color.g},${color.b},0)`);
     ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.beginPath(); ctx.arc(x, y, Math.max(2, toolState.laserSize * 0.7), 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(2, toolState.laserSize * 0.7), 0, Math.PI * 2);
+    ctx.fill();
   }
 
   _freeEraseAt(x, y) {
@@ -1739,7 +1818,8 @@ class PageInstance {
           if (Math.hypot(pt.x - x, pt.y - y) < radius) { touched = true; break; }
         }
         if (!touched) { newEls.push(el); continue; }
-        const segs = []; let cur = [];
+        const segs = [];
+        let cur = [];
         for (const pt of el.points) {
           if (Math.hypot(pt.x - x, pt.y - y) < radius) {
             if (cur.length > 1) segs.push(cur);
@@ -1788,7 +1868,10 @@ class PageInstance {
             this._resizeHandle = h.name;
             this._resizeStart = {
               x: p.x, y: p.y,
-              snap: { x1: sel.x1, y1: sel.y1, x2: sel.x2, y2: sel.y2, size: sel.size }
+              snap: {
+                x1: sel.x1, y1: sel.y1, x2: sel.x2, y2: sel.y2,
+                size: sel.size
+              }
             };
             return;
           }
@@ -1805,14 +1888,16 @@ class PageInstance {
           else this.selection.push(hit);
           this.selected = this.selection.length === 1 ? this.selection[0] : null;
         } else {
-          this.selection = [hit]; this.selected = hit;
+          this.selection = [hit];
+          this.selected = hit;
         }
         if (this.selection.length > 0) {
           this.mode = 'move';
           this._moveStart = {
             x: p.x, y: p.y,
             snapshots: this.selection.map(el => ({
-              el, x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2,
+              el,
+              x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2,
               points: el.points ? el.points.map(pt => ({...pt})) : null
             }))
           };
@@ -1827,21 +1912,26 @@ class PageInstance {
           else this.selection.push(this.pageElement);
           this.selected = this.selection.length === 1 ? this.selection[0] : null;
         } else {
-          this.selection = [this.pageElement]; this.selected = this.pageElement;
+          this.selection = [this.pageElement];
+          this.selected = this.pageElement;
         }
         if (this.selection.length > 0) {
           this.mode = 'move';
           this._moveStart = {
             x: p.x, y: p.y,
             snapshots: this.selection.map(el => ({
-              el, x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2, points: null
+              el,
+              x1: el.x1, y1: el.y1, x2: el.x2, y2: el.y2,
+              points: null
             }))
           };
           this.render();
         }
         return;
       }
-      this.selection = []; this.selected = null; this.render();
+      this.selection = [];
+      this.selected = null;
+      this.render();
       return;
     }
 
@@ -1900,7 +1990,9 @@ class PageInstance {
           if (hitTest(this.elements[i], p.x, p.y)) { cur = 'move'; break; }
         }
       }
-      if (cur === 'default' && this.pageElement && hitTest(this.pageElement, p.x, p.y)) cur = 'move';
+      if (cur === 'default' && this.pageElement && hitTest(this.pageElement, p.x, p.y)) {
+        cur = 'move';
+      }
       this.canvas.style.cursor = cur;
       return;
     }
@@ -1938,17 +2030,21 @@ class PageInstance {
       const moveLeft = h.includes('w'), moveRight = h.includes('e');
       const moveTop = h.includes('n'), moveBottom = h.includes('s');
       const isCorner = (moveLeft || moveRight) && (moveTop || moveBottom);
+
       let x1 = snap.x1, y1 = snap.y1, x2 = snap.x2, y2 = snap.y2;
       if (moveLeft) x1 = p.x;
       if (moveRight) x2 = p.x;
       if (moveTop) y1 = p.y;
       if (moveBottom) y2 = p.y;
+
       let newX1 = Math.min(x1, x2), newY1 = Math.min(y1, y2);
       let newX2 = Math.max(x1, x2), newY2 = Math.max(y1, y2);
+
       if (keepAspect) {
         const origW = Math.max(snap.x2 - snap.x1, 1);
         const origH = Math.max(snap.y2 - snap.y1, 1);
         const aspect = origW / origH;
+
         if (isCorner) {
           const newW = newX2 - newX1, newH = newY2 - newY1;
           let finalW, finalH;
@@ -1978,6 +2074,7 @@ class PageInstance {
         const newH = Math.max(newY2 - newY1, 20);
         el.size = Math.max(10, Math.min(200, (snap.size || 18) * (newH / oldH)));
       }
+
       const { CW, CH } = this.layout;
       newX1 = Math.max(0, Math.min(newX1, CW - 20));
       newY1 = Math.max(0, Math.min(newY1, CH - 20));
@@ -2122,7 +2219,8 @@ class PageInstance {
       if (files.length === 0) { returnToDefault(); return; }
       const { CW, CH, PW } = this.layout;
       const CASCADE = 30;
-      let added = []; let idx = 0;
+      let added = [];
+      let idx = 0;
       for (const f of files) {
         const dataUrl = await readFileAsDataURL(f);
         const im = new Image();
@@ -2132,7 +2230,9 @@ class PageInstance {
         const px = Math.min(Math.max(0, x + idx * CASCADE), Math.max(0, CW - w));
         const py = Math.min(Math.max(0, y + idx * CASCADE), Math.max(0, CH - h));
         const el = { type: 'image', x1: px, y1: py, x2: px + w, y2: py + h, src: dataUrl, _img: im };
-        this.elements.push(el); added.push(el); idx++;
+        this.elements.push(el);
+        added.push(el);
+        idx++;
       }
       if (added.length) this.setSelection(added);
       this.pushUndo(); this.save(); this.render();
@@ -2167,7 +2267,8 @@ class PageInstance {
     });
     this.elements = parsedEls;
     if (snap.pageElement) this.pageElement = snap.pageElement;
-    const needsImgUpdate = (snap.baseDataUrl !== this.pg.baseDataUrl) || (!!snap.blankImage !== !!this.pg.blankImage);
+    const needsImgUpdate = (snap.baseDataUrl !== this.pg.baseDataUrl) ||
+                           (!!snap.blankImage !== !!this.pg.blankImage);
     this.pg.baseDataUrl = snap.baseDataUrl;
     this.pg.blankImage = !!snap.blankImage;
     if (snap.width) this.pg.width = snap.width;
@@ -2175,12 +2276,15 @@ class PageInstance {
     if (needsImgUpdate && snap.baseDataUrl && this.pageImg.src !== snap.baseDataUrl) {
       this.pageImg.src = snap.baseDataUrl;
     }
-    this.selection = []; this.selected = null;
+    this.selection = [];
+    this.selected = null;
     this.save(); this.render();
     renderSidebar();
   }
   clear() {
-    this.elements = []; this.selection = []; this.selected = null;
+    this.elements = [];
+    this.selection = [];
+    this.selected = null;
     this.pushUndo(); this.save(); this.render();
   }
   save() {
@@ -2197,7 +2301,8 @@ async function pasteImageElement(inst, dataUrl) {
   im.src = dataUrl;
   await loaded;
   const { PW, PH, PAD } = inst.layout;
-  const maxW = PW * 0.85, maxH = PH * 0.85;
+  const maxW = PW * 0.85;
+  const maxH = PH * 0.85;
   let w = im.naturalWidth || 200;
   let h = im.naturalHeight || 200;
   const scale = Math.min(1, maxW / w, maxH / h);
@@ -2208,7 +2313,8 @@ async function pasteImageElement(inst, dataUrl) {
   inst.pushUndo();
   inst.elements.push(el);
   inst.setSelection([el]);
-  inst.save(); inst.render();
+  inst.save();
+  inst.render();
   showToast('Image pasted', 'success');
 }
 
@@ -2216,14 +2322,21 @@ async function handleSystemImagePaste(dataUrl) {
   const doc = getCurrentDoc();
   if (!doc) return false;
   const inst = ensureActiveInstance();
-  if (inst) { await pasteImageElement(inst, dataUrl); return true; }
+  if (inst) {
+    await pasteImageElement(inst, dataUrl);
+    return true;
+  }
   if (doc.pages.length === 0) {
     const im = new Image();
     await new Promise(r => { im.onload = r; im.onerror = r; im.src = dataUrl; });
     const newPage = {
-      id: uid(), baseDataUrl: dataUrl,
-      width: im.naturalWidth || 800, height: im.naturalHeight || 1131,
-      elements: [], pageElement: null, blankImage: false
+      id: uid(),
+      baseDataUrl: dataUrl,
+      width: im.naturalWidth || 800,
+      height: im.naturalHeight || 1131,
+      elements: [],
+      pageElement: null,
+      blankImage: false
     };
     doc.pages.push(newPage);
     activePageId = newPage.id;
@@ -2257,7 +2370,9 @@ function updateSelBar() {
   if (selectedPages.size > 0) {
     bar.classList.add('show');
     countEl.textContent = selectedPages.size + ' selected';
-  } else { bar.classList.remove('show'); }
+  } else {
+    bar.classList.remove('show');
+  }
 }
 
 function renderSidebar() {
@@ -2266,6 +2381,7 @@ function renderSidebar() {
   sb.innerHTML = '';
   const doc = getCurrentDoc();
   if (!doc) return;
+
   const header = document.createElement('div');
   header.className = 'sbHeader';
   header.innerHTML = `
@@ -2276,6 +2392,7 @@ function renderSidebar() {
   header.querySelector('.sbCloseBtn').onclick = toggleSidebar;
   header.querySelector('.sbAddBtn').onclick = (e) => { e.stopPropagation(); toggleAddMenu(); };
   sb.appendChild(header);
+
   const addMenu = document.createElement('div');
   addMenu.className = 'addMenu';
   addMenu.id = 'addMenu';
@@ -2291,18 +2408,25 @@ function renderSidebar() {
     };
   });
   sb.appendChild(addMenu);
+
   const selBar = document.createElement('div');
   selBar.className = 'sbSelBar';
   selBar.id = 'sbSelBar';
-  selBar.innerHTML = `<span id="sbSelCount">0 selected</span><button title="Delete selected pages">🗑 Delete</button>`;
+  selBar.innerHTML = `
+    <span id="sbSelCount">0 selected</span>
+    <button title="Delete selected pages">🗑 Delete</button>
+  `;
   selBar.querySelector('button').onclick = () => deleteSelectedPages();
   sb.appendChild(selBar);
   updateSelBar();
+
   const list = document.createElement('div');
   list.className = 'sbThumbList';
   sb.appendChild(list);
+
   const thumbWidth = 150;
   const thumbHeightMax = 200;
+
   doc.pages.forEach((pg, idx) => {
     const thumb = document.createElement('div');
     thumb.className = 'pgThumb';
@@ -2310,8 +2434,10 @@ function renderSidebar() {
     thumb.dataset.idx = idx;
     if (pg.id === activePageId) thumb.classList.add('active');
     if (selectedPages.has(pg.id)) thumb.classList.add('selected');
+
     const frame = document.createElement('div');
     frame.className = 'thumbFrame';
+
     if (pg.blankImage || !pg.baseDataUrl) {
       const aspect = (pg.width && pg.height) ? (pg.width / pg.height) : 0.707;
       let w = thumbWidth, h = w / aspect;
@@ -2330,10 +2456,12 @@ function renderSidebar() {
       frame.appendChild(img);
     }
     thumb.appendChild(frame);
+
     const num = document.createElement('div');
     num.className = 'thumbNum';
     num.textContent = idx + 1;
     thumb.appendChild(num);
+
     const actions = document.createElement('div');
     actions.className = 'thumbActions';
     const hideBtn = document.createElement('button');
@@ -2341,26 +2469,33 @@ function renderSidebar() {
     hideBtn.title = 'Show / hide annotations';
     hideBtn.onclick = (e) => { e.stopPropagation(); togglePageAnnotations(pg.id); };
     actions.appendChild(hideBtn);
+
     const delBtn = document.createElement('button');
     delBtn.textContent = '🗑';
     delBtn.title = 'Delete page';
     delBtn.className = 'danger';
     delBtn.onclick = (e) => {
       e.stopPropagation();
-      if (selectedPages.has(pg.id) && selectedPages.size > 1) deleteSelectedPages();
-      else deleteSinglePage(pg.id);
+      if (selectedPages.has(pg.id) && selectedPages.size > 1) {
+        deleteSelectedPages();
+      } else {
+        deleteSinglePage(pg.id);
+      }
     };
     actions.appendChild(delBtn);
     thumb.appendChild(actions);
+
     thumb.addEventListener('click', (e) => {
       if (thumb._suppressClick) { thumb._suppressClick = false; return; }
       handleThumbClick(pg.id, idx, e);
     });
+
     thumb.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       if (e.target.closest('button')) return;
       startThumbDrag(thumb, e, doc, idx);
     });
+
     list.appendChild(thumb);
   });
 }
@@ -2368,6 +2503,7 @@ function renderSidebar() {
 function handleThumbClick(pageId, idx, e) {
   const doc = getCurrentDoc();
   if (!doc) return;
+
   if (e.ctrlKey || e.metaKey) {
     if (selectedPages.has(pageId)) selectedPages.delete(pageId);
     else selectedPages.add(pageId);
@@ -2382,8 +2518,10 @@ function handleThumbClick(pageId, idx, e) {
     selectedPages.add(pageId);
     selectedPagesAnchor = idx;
   }
+
   activePageId = pageId;
   updateSidebarActive();
+
   const b = document.querySelector(`.pageBlock[data-page-id="${pageId}"]`);
   if (b) b.scrollIntoView({ behavior:'smooth', block:'center' });
 }
@@ -2415,34 +2553,45 @@ function closeAddMenu() {
 document.addEventListener('click', (e) => {
   const m = document.getElementById('addMenu');
   if (!m || !m.classList.contains('open')) return;
-  if (!e.target.closest('.addMenu') && !e.target.closest('.sbAddBtn')) closeAddMenu();
+  if (!e.target.closest('.addMenu') && !e.target.closest('.sbAddBtn')) {
+    closeAddMenu();
+  }
 });
 
 function addBlankPage() {
   const doc = getCurrentDoc();
   if (!doc) return showToast('Open a document first', 'error');
+
   let W = 800, H = 1131;
   if (doc.pages.length > 0) {
     const last = doc.pages[doc.pages.length - 1];
     if (last.width && last.height) { W = last.width; H = last.height; }
   }
+
   const newPage = {
     id: uid(),
     baseDataUrl: make1x1White(),
-    width: W, height: H,
-    elements: [], pageElement: null, blankImage: true
+    width: W,
+    height: H,
+    elements: [],
+    pageElement: null,
+    blankImage: true
   };
+
   doc.pages.push(newPage);
   activePageId = newPage.id;
   selectedPages.clear();
   selectedPages.add(newPage.id);
   selectedPagesAnchor = doc.pages.length - 1;
+
   saveApp();
   renderDocument();
+
   setTimeout(() => {
     const b = document.querySelector(`.pageBlock[data-page-id="${newPage.id}"]`);
     if (b) b.scrollIntoView({ behavior:'smooth', block:'center' });
   }, 100);
+
   showToast('Blank page added', 'success');
 }
 
@@ -2451,9 +2600,11 @@ async function deleteSinglePage(pageId) {
   const doc = getCurrentDoc(); if (!doc) return;
   const idx = doc.pages.findIndex(p => p.id === pageId);
   if (idx < 0) return;
+
   const pgSnapshot = deepClonePage(doc.pages[idx]);
   pageDeleteHistory.push({ docId: doc.id, page: pgSnapshot, index: idx });
   if (pageDeleteHistory.length > 100) pageDeleteHistory.shift();
+
   const inst = pageInstances[pageId];
   if (inst) {
     if (inst._laserRAF) cancelAnimationFrame(inst._laserRAF);
@@ -2463,6 +2614,7 @@ async function deleteSinglePage(pageId) {
   delete pageInstances[pageId];
   if (activePageId === pageId) activePageId = null;
   selectedPages.delete(pageId);
+
   await saveApp();
   renderDocument();
   showToast('Page deleted', 'success');
@@ -2471,19 +2623,24 @@ async function deleteSinglePage(pageId) {
 async function deleteSelectedPages() {
   const doc = getCurrentDoc();
   if (!doc || selectedPages.size === 0) return;
+
   const count = selectedPages.size;
   const msg = `Delete ${count} selected page${count !== 1 ? 's' : ''}?\n\nThe page${count !== 1 ? 's' : ''} will be removed and remaining pages renumbered.`;
   if (!confirm(msg)) return;
+
   const idsToDelete = new Set(selectedPages);
   const snapshots = [];
   doc.pages.forEach((pg, i) => {
-    if (idsToDelete.has(pg.id)) snapshots.push({ page: deepClonePage(pg), index: i });
+    if (idsToDelete.has(pg.id)) {
+      snapshots.push({ page: deepClonePage(pg), index: i });
+    }
   });
   snapshots.sort((a, b) => b.index - a.index);
   snapshots.forEach(s => {
     pageDeleteHistory.push({ docId: doc.id, page: s.page, index: s.index });
     if (pageDeleteHistory.length > 100) pageDeleteHistory.shift();
   });
+
   idsToDelete.forEach(id => {
     const inst = pageInstances[id];
     if (inst) {
@@ -2492,10 +2649,13 @@ async function deleteSelectedPages() {
     }
     delete pageInstances[id];
   });
+
   doc.pages = doc.pages.filter(pg => !idsToDelete.has(pg.id));
   if (activePageId && idsToDelete.has(activePageId)) activePageId = null;
+
   selectedPages.clear();
   selectedPagesAnchor = -1;
+
   await saveApp();
   renderDocument();
   showToast(`${count} page${count !== 1 ? 's' : ''} deleted`, 'success');
@@ -2512,7 +2672,10 @@ async function restoreLastDeletedPage() {
   pageDeleteHistory.pop();
   await saveApp();
   renderDocument();
-  if (last.page.id) { activePageId = last.page.id; updateSidebarActive(); }
+  if (last.page.id) {
+    activePageId = last.page.id;
+    updateSidebarActive();
+  }
   showToast('Page restored', 'success');
   return true;
 }
@@ -2532,12 +2695,15 @@ function startThumbDrag(thumb, e, doc, startIdx) {
   let isDragging = false;
   let ghost = null, dropLine = null;
   let targetIdx = startIdx;
+
   const onMove = (ev) => {
     const dx = ev.clientX - startX, dy = ev.clientY - startY;
+
     if (!isDragging && Math.hypot(dx, dy) > 6) {
       isDragging = true;
       thumb.classList.add('dragging');
       thumb._suppressClick = true;
+
       ghost = document.createElement('div');
       ghost.className = 'drag-ghost';
       const pg = doc.pages[startIdx];
@@ -2547,21 +2713,27 @@ function startThumbDrag(thumb, e, doc, startIdx) {
         ghost.innerHTML = `<span>Page ${startIdx + 1} (Blank)</span>`;
       }
       document.body.appendChild(ghost);
+
       dropLine = document.createElement('div');
       dropLine.className = 'drop-line';
       dropLine.style.opacity = '0';
       document.body.appendChild(dropLine);
+
       document.body.style.cursor = 'grabbing';
     }
+
     if (!isDragging) return;
+
     ghost.style.left = (ev.clientX + 14) + 'px';
     ghost.style.top = (ev.clientY - 14) + 'px';
+
     const items = Array.from(document.querySelectorAll('.sbThumbList .pgThumb'));
     targetIdx = items.length;
     for (let i = 0; i < items.length; i++) {
       const r = items[i].getBoundingClientRect();
       if (ev.clientY < r.top + r.height / 2) { targetIdx = i; break; }
     }
+
     let refRect;
     if (targetIdx < items.length) {
       refRect = items[targetIdx].getBoundingClientRect();
@@ -2574,22 +2746,28 @@ function startThumbDrag(thumb, e, doc, startIdx) {
     dropLine.style.width = refRect.width + 'px';
     dropLine.style.opacity = '1';
   };
+
   const onUp = async () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.body.style.cursor = '';
+
     if (!isDragging) return;
     thumb.classList.remove('dragging');
     if (ghost) ghost.remove();
     if (dropLine) dropLine.remove();
+
     if (targetIdx === startIdx || targetIdx === startIdx + 1) return;
+
     const [moved] = doc.pages.splice(startIdx, 1);
     const insertAt = targetIdx > startIdx ? targetIdx - 1 : targetIdx;
     doc.pages.splice(insertAt, 0, moved);
+
     await saveApp();
     renderDocument();
     showToast('Page reordered', 'success');
   };
+
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
 }
@@ -2619,9 +2797,12 @@ async function loadPDF(file, doc) {
     cv.width = vp.width; cv.height = vp.height;
     await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
     doc.pages.push({
-      id: uid(), baseDataUrl: cv.toDataURL('image/jpeg', 0.78),
+      id: uid(),
+      baseDataUrl: cv.toDataURL('image/jpeg', 0.78),
       width: cv.width, height: cv.height,
-      elements: [], pageElement: null, blankImage: false
+      elements: [],
+      pageElement: null,
+      blankImage: false
     });
   }
   return pdf.numPages;
@@ -2633,7 +2814,9 @@ async function loadImage(file, doc) {
   doc.pages.push({
     id: uid(), baseDataUrl: dataUrl,
     width: img.naturalWidth, height: img.naturalHeight,
-    elements: [], pageElement: null, blankImage: false
+    elements: [],
+    pageElement: null,
+    blankImage: false
   });
 }
 
@@ -2644,6 +2827,7 @@ function initDragDrop() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(31,111,235,0.12);border:3px dashed var(--accent);z-index:9999;display:none;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--accent);pointer-events:none';
   overlay.textContent = '📥 Drop files to upload';
   document.body.appendChild(overlay);
+
   let dragCounter = 0;
   scroll.addEventListener('dragenter', e => {
     if (!e.dataTransfer.types.includes('Files')) return;
@@ -2954,10 +3138,6 @@ document.addEventListener('keyup', e => {
   }
 });
 
-/* ================================================================
-   FIREBASE REAL-TIME SYNC + QR / ROOM MEMBERS + OWNER PASSWORD
-   ================================================================ */
-
 const ROOM_ID = 'codebreaker-room-v1';
 const ROOM_PATH = 'rooms/' + ROOM_ID;
 
@@ -2988,8 +3168,6 @@ let pendingJoin = false;
 let wasMember = false;
 let joining = false;
 
-
-   ============================================================= */
 function _stateFp(s) {
   let v = 0;
   for (let i = 0; i < s.length; i++) {
@@ -3003,7 +3181,6 @@ function _verifySyncKey(input) {
   try { return _stateFp(input) === _ROOM_CHECKSUM; } catch (_) { return false; }
 }
 
-/* Owner password UI + claim */
 function openOwnerPwdModal() {
   const modal = document.getElementById('ownerPwdModal');
   modal.classList.add('open');
@@ -3067,14 +3244,12 @@ async function claimOwnership(pwd) {
   return true;
 }
 
-/* --- owner pwd modal: Enter / Escape keys --- */
 document.addEventListener('keydown', e => {
   if (!document.getElementById('ownerPwdModal').classList.contains('open')) return;
   if (e.key === 'Enter') { e.preventDefault(); submitOwnerPassword(); }
   if (e.key === 'Escape') { e.preventDefault(); closeOwnerPwdModal(); }
 });
 
-/* --- join link hash handling (cleaned immediately, never persists) --- */
 (function parseJoinHash() {
   const h = location.hash || '';
   if (h.startsWith('#join=')) {
@@ -3241,14 +3416,11 @@ async function initSync() {
     queueRemoteApply(val);
   });
 
-  /* Read owner — do NOT auto-claim. Only the password can grant ownership. */
   try {
     const oSnap = await get(ref(db, ROOM_PATH + '/ownerId'));
     roomInfo.ownerId = oSnap.val() || null;
   } catch (err) { console.warn('owner check', err); }
 
-  /* If this device was already owner (from a previous session with same device id),
-     restore its member record so it stays owner. */
   if (roomInfo.ownerId === MY_ID) {
     try {
       await set(ref(db, ROOM_PATH + '/members/' + MY_ID), {
@@ -3488,9 +3660,6 @@ async function copyShareLink() {
   }
 }
 
-/* ================================================================
-   BOOT
-   ================================================================ */
 (async function boot() {
   await loadApp();
   document.documentElement.dataset.theme = app.theme || 'dark';
